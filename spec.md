@@ -75,6 +75,25 @@ sizing a floor beam or deck joist.
 - Deflection limit: dropdown with L/240 or L/360. Default: L/360.
 - Self-weight is ignored.
 
+## File Operations
+- A **File** menu provides **Save** and **Open** commands.
+- Save writes the complete beam setup to a JSON file: support type, span,
+  material, section, deflection limit, point loads, and uniform loads.
+- Open reads a previously saved beam setup and restores it, including all
+  loads and selected controls. Invalid or unsupported saved files show an
+  inline error and leave the current beam unchanged.
+- An **Export Results** button saves the current beam table as CSV.
+- The CSV contains one row per calculated x position and columns for
+  `x_ft`, `V_kips`, `M_kip_ft`, and `deflection_in`; values use Excel-compatible
+  comma-separated UTF-8 CSV formatting.
+- On Windows, exporting also opens the saved CSV in the associated spreadsheet
+  application, normally Excel.
+- A **Calculation Sheet** button saves a PDF design sheet.
+- The PDF includes the project title, all beam and load inputs at the top,
+  reactions and selected section, the beam/load drawing, shear, moment, and
+  deflection diagrams, and both bending/deflection check results.
+- On Windows, exporting also opens the saved PDF in the associated PDF viewer.
+
 ## Calculations
 - Use x = 0 ft at the left end, positive x toward the right, and y positive
   upward. Shear V(x) is in kips and moment M(x) is in kip-ft. Positive shear
@@ -130,6 +149,10 @@ sizing a floor beam or deck joist.
 - A line suggesting the lightest passing section, with a button to use it.
 - When no section passes, show "No passing section." and do not show the
   use-section button.
+- A clearly labeled Export Results button saves the current x, shear, moment,
+  and deflection table to a CSV file.
+- A clearly labeled Calculation Sheet button saves a submission-ready PDF
+  containing the inputs, diagrams, reactions, section, and check cards.
 - Everything updates immediately whenever any input changes.
 
 ## Look and feel
@@ -161,7 +184,6 @@ sizing a floor beam or deck joist.
 ## Out of scope
 - Self-weight, shear stress, lateral-torsional buckling, load
   combinations, and continuous beams.
-- Saving designs.
 
 ## Build stages
 
@@ -219,7 +241,7 @@ sizing a floor beam or deck joist.
 - Run the full validation matrix and test keyboard, mouse, and small-screen
   behavior.
 - Check: all four supplied validation cases match, invalid-input states remain
-  clear, and no out-of-scope saving or unsupported beam types appear.
+  clear, and no unsupported beam types appear.
 
 ## Resolved notes
 

@@ -30,3 +30,21 @@
 - Asked to size load arrows according to kips per foot. Scaled uniform-load
   arrow length and arrowhead size with load magnitude.
   **Worked:** Verified 0.1, 1, and 10 k/ft produce progressively larger arrows.
+- Asked to add Save/Open file operations and remove saving designs from the
+  spec's out-of-scope section. Updated `spec.md`, added JSON persistence, and
+  added File menu and Ctrl+S/Ctrl+O commands. **Worked:** 12 tests passed,
+  Python modules compiled, and a saved cantilever/Lumber beam restored in the
+  live Tkinter UI with matching span, support, section, limit, and loads.
+- Asked to add CSV result export. Updated `spec.md`, added a CSV writer and
+  **Export Results** button that opens the file in the associated Windows
+  spreadsheet application. **Worked:** 13 tests passed, modules compiled, and
+  the live UI smoke check confirmed the button and CSV header/rows.
+- Asked to add a submission-ready PDF calculation sheet. Updated `spec.md`,
+  added a Matplotlib PDF generator and **Calculation Sheet** button.
+  **Worked:** 14 tests passed after correcting the PDF header assertion,
+  modules compiled, and the generated PDF is a valid Matplotlib PDF.
+- Asked to run all five spec.md validation cases against the beam calculation
+  module and report expected versus actual values. Executed all five cases and
+  compared reactions, maxima, bending stress, deflection, locations, and pass
+  states. **Worked:** All explicitly specified numerical values matched within
+  normal rounding precision.

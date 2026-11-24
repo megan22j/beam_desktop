@@ -11,6 +11,15 @@ diagrams.
 Uniform-load arrows scale in length and arrowhead size with the load's kips
 per foot.
 
+Use **File > Save** or Ctrl+S to save the complete beam setup as JSON.
+Use **File > Open** or Ctrl+O to restore a saved setup.
+
+Use **Export Results** to save x, shear, moment, and deflection values as a
+CSV. On Windows, the CSV opens in the associated spreadsheet application.
+
+Use **Calculation Sheet** to save a submission-ready PDF with the inputs,
+beam drawing, three diagrams, reactions, section, and design checks.
+
 ## Run
 
 Use Python 3.10 or newer with Tkinter available:

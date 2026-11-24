@@ -1,4 +1,7 @@
 import unittest
+import tempfile
+import csv
+from pathlib import Path
 
 from beam_calculations import (
     BeamInput,
@@ -9,6 +12,9 @@ from beam_calculations import (
     scale_load_positions,
     shear_at,
 )
+from beam_persistence import beam_from_dict, beam_to_dict, open_beam, save_beam
+from beam_export import analysis_to_csv
+from beam_pdf import analysis_to_pdf
 
 
 class BeamCalculationTests(unittest.TestCase):
@@ -110,6 +116,57 @@ class BeamCalculationTests(unittest.TestCase):
         )
         self.assertEqual(points, (PointLoad(2.0, 10.0),))
         self.assertEqual(uniforms, (UniformLoad(1.0, 4.0, 16.0),))
+
+    def test_saved_beam_round_trips_complete_state(self):
+        beam = BeamInput(
+            span=18.5,
+            support="Cantilever",
+            point_loads=(PointLoad(7.25, 18.5),),
+            uniform_loads=(UniformLoad(2.5, 3.0, 14.0),),
+            material="Lumber",
+            section="2x12",
+            deflection_limit=240,
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "cantilever.beam.json"
+            save_beam(path, beam)
+            loaded = open_beam(path)
+
+        self.assertEqual(loaded, beam)
+        self.assertEqual(beam_from_dict(beam_to_dict(beam)), beam)
+
+    def test_invalid_saved_file_format_is_rejected(self):
+        data = {"format": "Another App", "version": 1}
+        with self.assertRaisesRegex(ValueError, "not a Beam Designer file"):
+            beam_from_dict(data)
+
+    def test_results_export_to_csv(self):
+        analysis = analyze_beam(BeamInput())
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "beam-results.csv"
+            analysis_to_csv(path, analysis)
+            with path.open("r", encoding="utf-8", newline="") as csv_file:
+                rows = list(csv.reader(csv_file))
+
+        self.assertEqual(
+            rows[0],
+            ["x_ft", "V_kips", "M_kip_ft", "deflection_in"],
+        )
+        self.assertGreater(len(rows), 40)
+        self.assertEqual(len(rows[1]), 4)
+        self.assertEqual(float(rows[1][0]), 0.0)
+
+    def test_calculation_sheet_exports_pdf(self):
+        beam = BeamInput()
+        analysis = analyze_beam(beam)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "beam-calculation.pdf"
+            analysis_to_pdf(path, beam, analysis)
+            header = path.read_bytes()[:8]
+            size = path.stat().st_size
+
+        self.assertTrue(header.startswith(b"%PDF-"))
+        self.assertGreater(size, 1000)
 
     def test_invalid_load_bounds_are_rejected(self):
         beam = BeamInput(uniform_loads=(UniformLoad(1.0, 8.0, 7.0),))

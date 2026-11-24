@@ -1,8 +1,11 @@
 """Tkinter interface for the Beam Designer."""
 
 from math import sqrt
+import os
+import sys
 import tkinter as tk
 from tkinter import ttk
+from tkinter import filedialog, messagebox
 from typing import Any
 
 from beam_calculations import (
@@ -19,6 +22,9 @@ from beam_calculations import (
     scale_load_positions,
     shear_at,
 )
+from beam_persistence import open_beam, save_beam
+from beam_export import analysis_to_csv
+from beam_pdf import analysis_to_pdf
 
 
 BLUE = "#2563eb"
@@ -64,6 +70,7 @@ class BeamDesignerApp:
         self._beam: BeamInput | None = None
 
         self._configure_styles()
+        self._build_menu()
         self._build_header()
         self._build_layout()
         self._add_uniform_load(UniformLoad(1.0, 0.0, 20.0), refresh=False)
@@ -82,6 +89,16 @@ class BeamDesignerApp:
         style.configure("Section.TLabel", background="white", foreground=MUTED, font=("Segoe UI", 9, "bold"))
         style.configure("Accent.TButton", font=("Segoe UI", 9, "bold"))
         style.configure("TEntry", padding=5)
+
+    def _build_menu(self) -> None:
+        menu = tk.Menu(self.root)
+        file_menu = tk.Menu(menu, tearoff=False)
+        file_menu.add_command(label="Save", accelerator="Ctrl+S", command=self._save_design)
+        file_menu.add_command(label="Open", accelerator="Ctrl+O", command=self._open_design)
+        menu.add_cascade(label="File", menu=file_menu)
+        self.root.configure(menu=menu)
+        self.root.bind("<Control-s>", lambda _event: self._save_design())
+        self.root.bind("<Control-o>", lambda _event: self._open_design())
 
     def _build_header(self) -> None:
         header = ttk.Frame(self.root, style="Card.TFrame", padding=(20, 12))
@@ -209,6 +226,14 @@ class BeamDesignerApp:
         self.use_section_button = ttk.Button(
             recommendation, text="Use section", command=self._use_recommended_section,
         )
+        self.export_button = ttk.Button(
+            recommendation, text="Export Results", command=self._export_results,
+        )
+        self.export_button.pack(side="right")
+        self.pdf_button = ttk.Button(
+            recommendation, text="Calculation Sheet", command=self._export_calculation_sheet,
+        )
+        self.pdf_button.pack(side="right", padx=(0, 6))
 
     def _check_card(self, parent: ttk.Frame, title: str, formula: str) -> ttk.Frame:
         card = ttk.Frame(parent, style="Card.TFrame", padding=(12, 10))
@@ -531,6 +556,136 @@ class BeamDesignerApp:
         if self._analysis and self._analysis.recommendation:
             self.section_var.set(self._analysis.recommendation.name)
             self._refresh()
+
+    def _export_results(self) -> None:
+        if self._analysis is None:
+            messagebox.showerror(
+                "Export Results",
+                "Fix the current beam input before exporting results.",
+                parent=self.root,
+            )
+            return
+
+        path = filedialog.asksaveasfilename(
+            parent=self.root,
+            title="Export Beam Results",
+            defaultextension=".csv",
+            filetypes=(("CSV files", "*.csv"), ("All files", "*.*")),
+        )
+        if not path:
+            return
+        try:
+            analysis_to_csv(path, self._analysis)
+            self.status_var.set(f"Exported results to {path}")
+            if sys.platform == "win32":
+                os.startfile(path)  # type: ignore[attr-defined]
+        except OSError as error:
+            messagebox.showerror("Export Results", str(error), parent=self.root)
+
+    def _export_calculation_sheet(self) -> None:
+        if self._analysis is None or self._beam is None:
+            messagebox.showerror(
+                "Calculation Sheet",
+                "Fix the current beam input before creating a calculation sheet.",
+                parent=self.root,
+            )
+            return
+
+        path = filedialog.asksaveasfilename(
+            parent=self.root,
+            title="Save Calculation Sheet",
+            defaultextension=".pdf",
+            filetypes=(("PDF files", "*.pdf"), ("All files", "*.*")),
+        )
+        if not path:
+            return
+        try:
+            analysis_to_pdf(path, self._beam, self._analysis)
+            self.status_var.set(f"Saved calculation sheet to {path}")
+            if sys.platform == "win32":
+                os.startfile(path)  # type: ignore[attr-defined]
+        except (OSError, RuntimeError, ValueError) as error:
+            messagebox.showerror("Calculation Sheet", str(error), parent=self.root)
+
+    def _save_design(self) -> None:
+        try:
+            beam = self._build_beam()
+            beam = BeamInput(
+                span=beam.span,
+                support=beam.support,
+                point_loads=beam.point_loads,
+                uniform_loads=beam.uniform_loads,
+                material=beam.material,
+                section=beam.section,
+                deflection_limit=beam.deflection_limit,
+            )
+            analyze_beam(beam)
+        except (ValueError, OverflowError) as error:
+            self.error_var.set(str(error))
+            messagebox.showerror("Save Beam", str(error), parent=self.root)
+            return
+
+        path = filedialog.asksaveasfilename(
+            parent=self.root,
+            title="Save Beam",
+            defaultextension=".beam.json",
+            filetypes=(("Beam Designer files", "*.beam.json"), ("JSON files", "*.json"), ("All files", "*.*")),
+        )
+        if not path:
+            return
+        try:
+            save_beam(path, beam)
+            self.status_var.set(f"Saved {path}")
+        except (OSError, ValueError) as error:
+            messagebox.showerror("Save Beam", str(error), parent=self.root)
+
+    def _open_design(self) -> None:
+        path = filedialog.askopenfilename(
+            parent=self.root,
+            title="Open Beam",
+            filetypes=(("Beam Designer files", "*.beam.json"), ("JSON files", "*.json"), ("All files", "*.*")),
+        )
+        if not path:
+            return
+        try:
+            beam = open_beam(path)
+        except (OSError, ValueError) as error:
+            messagebox.showerror("Open Beam", str(error), parent=self.root)
+            self.error_var.set(str(error))
+            return
+
+        self._apply_opened_beam(beam)
+        self.status_var.set(f"Opened {path}")
+
+    def _apply_opened_beam(self, beam: BeamInput) -> None:
+        self._suspend_refresh = True
+        for row in self._point_rows:
+            row["frame"].destroy()
+        for row in self._uniform_rows:
+            row["frame"].destroy()
+        self._point_rows = []
+        self._uniform_rows = []
+
+        self.support_var.set(beam.support)
+        self.material_var.set(beam.material)
+        self._update_section_options()
+        self.section_var.set(beam.section)
+        self.limit_var.set(f"L/{beam.deflection_limit}")
+        self.span_var.set(self._fmt(beam.span))
+        self.slider_var.set(beam.span)
+
+        for load in beam.point_loads:
+            self._add_point_load(load, refresh=False)
+        for load in beam.uniform_loads:
+            self._add_uniform_load(load, refresh=False)
+        self._set_span_snapshot(
+            beam.span,
+            tuple(beam.point_loads),
+            tuple(beam.uniform_loads),
+        )
+        self._suspend_refresh = False
+        self.error_var.set("")
+        self._refresh()
 
     def _draw(self) -> None:
         if not hasattr(self, "canvas"):
