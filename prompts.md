@@ -48,3 +48,11 @@
   compared reactions, maxima, bending stress, deflection, locations, and pass
   states. **Worked:** All explicitly specified numerical values matched within
   normal rounding precision.
+- Asked to rerun all five spec.md validation cases and confirm they still pass.
+  Reexecuted cases 1-5 directly against the beam calculation module and ran the
+  complete unit suite. **Worked:** all five cases matched and all 14 tests
+  passed.
+- Asked for a short README describing the app, packages to install, and startup
+  command. Replaced the README with concise install and run instructions.
+  **Worked:** README now covers app purpose, Matplotlib installation, Tkinter,
+  and `python main.py`.
